@@ -1,4 +1,9 @@
 library(shiny)
+library(ggplot2)
+library(sf)
+
+a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long))
+a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326)
 
 ui <- fluidPage(
   titlePanel("Ann Arbor Housing Search"),
@@ -44,7 +49,6 @@ ui <- fluidPage(
       textOutput("Random_test")
     )
   )
-  
 )
 
 server <- function(input, output) {
