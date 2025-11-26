@@ -10,52 +10,70 @@ a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 
 
 ui <- fluidPage(
   titlePanel("Ann Arbor Housing Search"),
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput(
-        inputId = "beds", 
-        label = "Bedrooms: ",
-        min = 0,
-        max = 24,
-        value = 0
-      ),
-      sliderInput(
-        inputId = "full_baths", 
-        label = "Full Baths: ",
-        min = 0,
-        max = 24,
-        value = 0
-      ),
-      sliderInput(
-        inputId = "half_baths", 
-        label = "Half Baths: ",
-        min = 0,
-        max = 6,
-        value = 0
-      ),
-      sliderInput(
-        inputId = "sqft", 
-        label = "Square feet: ",
-        min = 383,
-        max = 9006,
-        value = c(383, 9006)
-      ),
-      sliderInput(
-        inputId = "acres", 
-        label = "Acres: ",
-        min = 0,
-        max = 10,
-        value = 0
-      ),
-      selectInput(
-        inputId = "region",
-        label = "Region: ",
-        c("1", "2", "3", "4")
-      )
-    ),
-    mainPanel(
-      htmlOutput("house_price"),
-      plotOutput("map")
+  tabsetPanel(
+    tabPanel("Housing Search",
+             sidebarLayout(
+               sidebarPanel(
+                 sliderInput(
+                   inputId = "beds", 
+                   label = "Bedrooms: ",
+                   min = 0,
+                   max = 24,
+                   value = 0
+                 ),
+                 sliderInput(
+                   inputId = "full_baths", 
+                   label = "Full Baths: ",
+                   min = 0,
+                   max = 24,
+                   value = 0
+                 ),
+                 sliderInput(
+                   inputId = "half_baths", 
+                   label = "Half Baths: ",
+                   min = 0,
+                   max = 6,
+                   value = 0
+                 ),
+                 sliderInput(
+                   inputId = "sqft", 
+                   label = "Square feet: ",
+                   min = 383,
+                   max = 9006,
+                   value = c(383, 9006)
+                 ),
+                 sliderInput(
+                   inputId = "acres", 
+                   label = "Acres: ",
+                   min = 0,
+                   max = 10,
+                   value = 0
+                 ),
+                 selectInput(
+                   inputId = "region",
+                   label = "Region: ",
+                   c("1", "2", "3", "4")
+                 )
+               ),
+               mainPanel(
+                 htmlOutput("house_price"),
+                 plotOutput("map")
+               )
+             )
+          ),
+    tabPanel("Inflation",
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput(
+                   inputId = "regionInflation",
+                   label = "Region: ",
+                   c("All", "1", "2", "3", "4")
+                 )
+               ),
+               mainPanel(
+                 textOutput("inflation_test_text")
+               )
+             )
     )
   )
 )
@@ -76,6 +94,11 @@ server <- function(input, output) {
   
   output$map <- renderPlot({
     ggplot(data = a2housing_sf) + annotation_map_tile(zoom = 14) + geom_sf() 
+  })
+  
+  output$inflation_test_text <- renderText({
+    paste("Test here if one or more of the regions of Ann Arbor have experienced greater
+    inflation than the national average.")
   })
 }
 
