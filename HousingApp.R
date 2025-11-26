@@ -20,14 +20,14 @@ ui <- fluidPage(
         value = 0
       ),
       sliderInput(
-        inputId = "fullBaths", 
+        inputId = "full_baths", 
         label = "Full Baths: ",
         min = 0,
         max = 24,
         value = 0
       ),
       sliderInput(
-        inputId = "halfBaths", 
+        inputId = "half_baths", 
         label = "Half Baths: ",
         min = 0,
         max = 6,
@@ -46,19 +46,34 @@ ui <- fluidPage(
         min = 0,
         max = 10,
         value = 0
-      )     
+      ),
+      selectInput(
+        inputId = "region",
+        label = "Region: ",
+        c("1", "2", "3", "4")
+      )
     ),
     mainPanel(
-      textOutput("Random_test"),
+      htmlOutput("house_price"),
       plotOutput("map")
     )
   )
 )
 
 server <- function(input, output) {
-  output$Random_test <- renderText({
-    paste("This is a test")
+  output$house_price <- renderUI({
+    mdl <- lm(sale_price ~ beds + full_baths + half_baths + sqft + acres, data = a2housing)
+    coefs <- coef(mdl)
+    
+    predicted_price <- function(num) {
+      signif(coefs[2] * input$beds + coefs[3] * input$full_baths + 
+      coefs[4] * input$half_baths + coefs[5] * input$sqft[num] + coefs[6] * input$acres, 4)
+    }
+    
+    HTML(paste("Lowest predicted price: $", predicted_price(1), 
+               "<br>", "Highest predicted price: $", predicted_price(2)))
   })
+  
   output$map <- renderPlot({
     ggplot(data = a2housing_sf) + annotation_map_tile(zoom = 14) + geom_sf() 
   })
