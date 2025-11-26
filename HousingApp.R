@@ -1,6 +1,9 @@
 library(shiny)
 library(ggplot2)
 library(sf)
+library(prettymapr)
+library(ggspatial)
+theme_set(theme_classic())
 
 a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long))
 a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326)
@@ -46,7 +49,8 @@ ui <- fluidPage(
       )     
     ),
     mainPanel(
-      textOutput("Random_test")
+      textOutput("Random_test"),
+      plotOutput("map")
     )
   )
 )
@@ -54,6 +58,9 @@ ui <- fluidPage(
 server <- function(input, output) {
   output$Random_test <- renderText({
     paste("This is a test")
+  })
+  output$map <- renderPlot({
+    ggplot(data = a2housing_sf) + annotation_map_tile(zoom = 14) + geom_sf() 
   })
 }
 
