@@ -52,7 +52,7 @@ ui <- fluidPage(
                  selectInput(
                    inputId = "region",
                    label = "Region: ",
-                   c("1", "2", "3", "4")
+                   c("All", "1", "2", "3", "4")
                  )
                ),
                mainPanel(
@@ -84,7 +84,7 @@ server <- function(input, output) {
     coefs <- coef(mdl)
     
     predicted_price <- function(num) {
-      signif(coefs[2] * input$beds + coefs[3] * input$full_baths + 
+      signif(coefs[1] + coefs[2] * input$beds + coefs[3] * input$full_baths + 
       coefs[4] * input$half_baths + coefs[5] * input$sqft[num] + coefs[6] * input$acres, 4)
     }
     
@@ -100,6 +100,8 @@ server <- function(input, output) {
     paste("Test here if one or more of the regions of Ann Arbor have experienced greater
     inflation than the national average.")
   })
+  
+  
 }
 
 shinyApp(ui, server)
