@@ -100,6 +100,8 @@ server <- function(input, output) {
         filter(region == as.numeric(input$region))
     }
     mdl <- lm(sale_price ~ beds + full_baths + half_baths + sqft + acres, data = a2housing_filtered)
+    # Solution to this might be not including acres or regressing houses away from 
+    # the city center separately from those closer
     coefs <- coef(mdl)
     
     predicted_price <- function(num) {
