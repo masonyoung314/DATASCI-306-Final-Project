@@ -94,7 +94,12 @@ server <- function(input, output) {
   })
   
   output$map <- renderPlot({
-    ggplot(data = a2housing_sf) + annotation_map_tile(zoom = 14) + geom_sf() 
+    x_half <- -83.74
+    y_half <- 42.28
+    ggplot(data = a2housing_sf) + annotation_map_tile(zoom = 14) + geom_sf() +
+      geom_hline(yintercept = y_half, linetype="dashed") + 
+      geom_vline(xintercept = x_half, linetype="dashed") +
+      annotate("text", x = -83, y = 42.32, label = "Region 1")
   })
   
   output$inflation_test_text <- renderText({
@@ -114,7 +119,12 @@ server <- function(input, output) {
           in 2021-2025 are as follows: ", "<br>", "<br>", 
           "2021:", inflation21, "<br>", "2022:", inflation22, "<br>",
           "2023:", inflation23, "<br>", "2024:", inflation24, "<br>", 
-          "2025:", inflation25))
+          "2025:", inflation25, "<br>"))
+          
+    # figure out how to select houses that are similar to each other, and
+    # test how the prices for similar houses have changed from 2021-2025
+    
+    
   })
   
 }
