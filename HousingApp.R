@@ -8,7 +8,15 @@ theme_set(theme_classic())
 load("a2housing.RData")
 
 
-a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long))
+a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long)) |>
+  mutate(region = case_when(
+    long <= 83.74 & lat >= 42.28 ~ 1,
+    long > 83.74 & lat >= 42.28 ~ 2,
+    long <= 83.74 & lat < 42.28 ~ 3,
+    long > 83.74 & lat < 42.28 ~ 4,
+    TRUE ~ 1
+  ))
+      
 a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326)
 
 ui <- fluidPage(
