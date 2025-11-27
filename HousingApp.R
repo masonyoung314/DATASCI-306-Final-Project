@@ -71,7 +71,8 @@ ui <- fluidPage(
                  )
                ),
                mainPanel(
-                 textOutput("inflation_test_text")
+                 textOutput("inflation_test_text"),
+                 htmlOutput("inflation_test")
                )
              )
     )
@@ -101,6 +102,20 @@ server <- function(input, output) {
     inflation than the national average.")
   })
   
+  output$inflation_test <- renderUI({
+    inflation21 <- 0.0329
+    inflation22 <- 0.0715
+    inflation23 <- 0.0644
+    inflation24 <- 0.0437
+    inflation25 <- 0.0334
+    
+    HTML(paste("<br>", "According to https://www.in2013dollars.com/Housing/price-inflation 
+          and the U.S. Bureau of Labor Statistics, the inflation rates for housing
+          in 2021-2025 are as follows: ", "<br>", "<br>", 
+          "2021:", inflation21, "<br>", "2022:", inflation22, "<br>",
+          "2023:", inflation23, "<br>", "2024:", inflation24, "<br>", 
+          "2025:", inflation25))
+  })
   
 }
 
