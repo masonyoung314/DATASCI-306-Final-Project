@@ -8,7 +8,9 @@ theme_set(theme_classic())
 load("a2housing.RData")
 
 
-a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), !is.na(sqft)) |>
+
+a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), 
+                                            !is.na(sqft), !is.na(sale_price)) |>
   mutate(region = case_when(
     long <= -83.74 & lat >= 42.28 ~ "1",
     long > -83.74 & lat >= 42.28 ~ "2",
@@ -91,6 +93,11 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  
+  base_map <- reactive({
+    ggplot() # + annotation_map_tile(zoom = 14)
+  })
+  
   output$house_price <- renderUI({
     if (input$region == "All") {
       a2housing_filtered <- a2housing_no_missing
@@ -130,18 +137,18 @@ server <- function(input, output) {
              sqft >= input$sqft[1] & sqft <= input$sqft[2], 
              acres >= input$acres[1] & acres <= input$acres[2]) 
     
-    a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326)
-    a2housing_filtered_sf <- st_as_sf(a2_no_missing_filtered, coords = c("long", "lat"), crs = 4326)
+    a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326) 
+    a2housing_filtered_sf <- st_as_sf(a2_no_missing_filtered, coords = c("long", "lat"), crs = 4326) 
     
     x_half <- -83.74
     y_half <- 42.28
     
-    p <- ggplot() +
-      annotation_map_tile(zoom = 14) +
-      geom_sf(data = a2housing_sf, color = "black", alpha = 0.5)
+    p <- base_map() + 
+      geom_sf(data = a2housing_sf, color = "black", size = 2, alpha = 0.5) 
+      
     
     if (nrow(a2_no_missing_filtered) > 0) {
-      p <- p + geom_sf(data = a2housing_filtered_sf, color = "red", size = 2)
+      p <- p + geom_sf(data = a2housing_filtered_sf, color = "red", size = 2, alpha = 0.9)
     }
     
     p + geom_hline(yintercept = y_half, linetype="dashed") + 
@@ -154,7 +161,7 @@ server <- function(input, output) {
         x = "Longitude", 
         y = "Latitude", 
         title = "Map of Ann Arbor with Homes Sold From 2021-2025"
-      )
+      ) + coord_sf()
   })
   
   output$inflation_test_text <- renderText({
