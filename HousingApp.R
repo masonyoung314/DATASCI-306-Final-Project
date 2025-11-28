@@ -17,7 +17,7 @@ a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(ac
     TRUE ~ "1"
   ))
       
-a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326)
+
 
 ui <- fluidPage(
   titlePanel("Ann Arbor Housing Search"),
@@ -30,35 +30,35 @@ ui <- fluidPage(
                    label = "Bedrooms: ",
                    min = 0,
                    max = 24,
-                   value = c(0, 24)
+                   value = c(0, 1)
                  ),
                  sliderInput(
                    inputId = "full_baths", 
                    label = "Full Baths: ",
                    min = 0,
                    max = 24,
-                   value = c(0, 24)
+                   value = c(0, 1)
                  ),
                  sliderInput(
                    inputId = "half_baths", 
                    label = "Half Baths: ",
                    min = 0,
                    max = 6,
-                   value = c(0, 6)
+                   value = c(0, 1)
                  ),
                  sliderInput(
                    inputId = "sqft", 
                    label = "Square feet: ",
                    min = 383,
                    max = 9006,
-                   value = c(383, 9006)
+                   value = c(383, 1000)
                  ),
                  sliderInput(
                    inputId = "acres", 
                    label = "Acres: ",
                    min = 0,
                    max = 10,
-                   value = c(0, 10)
+                   value = c(0, 1)
                  ),
                  selectInput(
                    inputId = "region",
@@ -114,10 +114,37 @@ server <- function(input, output) {
   })
   
   output$map <- renderPlot({
+    
+    if (input$region == "All") {
+      a2housing_no_missing_plot <- a2housing_no_missing
+    }
+    else {
+      a2housing_no_missing_plot <- a2housing_no_missing |> 
+        filter(region == as.numeric(input$region))
+    }
+    
+    a2_no_missing_filtered <- a2housing_no_missing_plot |> 
+      filter(beds >= input$beds[1] & beds <= input$beds[2],
+             full_baths >= input$full_baths[1] & full_baths <= input$full_baths[2],
+             half_baths >= input$half_baths[1] & half_baths <= input$half_baths[2],
+             sqft >= input$sqft[1] & sqft <= input$sqft[2], 
+             acres >= input$acres[1] & acres <= input$acres[2]) 
+    
+    a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326)
+    a2housing_filtered_sf <- st_as_sf(a2_no_missing_filtered, coords = c("long", "lat"), crs = 4326)
+    
     x_half <- -83.74
     y_half <- 42.28
-    ggplot(data = a2housing_sf) + annotation_map_tile(zoom = 14) + geom_sf() +
-      geom_hline(yintercept = y_half, linetype="dashed") + 
+    
+    p <- ggplot() +
+      annotation_map_tile(zoom = 14) +
+      geom_sf(data = a2housing_sf, color = "black", alpha = 0.5)
+    
+    if (nrow(a2_no_missing_filtered) > 0) {
+      p <- p + geom_sf(data = a2housing_filtered_sf, color = "red", size = 2)
+    }
+    
+    p + geom_hline(yintercept = y_half, linetype="dashed") + 
       geom_vline(xintercept = x_half, linetype="dashed") +
       annotate("text", x = -83.78, y = 42.33, label = "Region 1", color = "blue") +
       annotate("text", x = -83.7, y = 42.33, label = "Region 2", color = "blue") +
