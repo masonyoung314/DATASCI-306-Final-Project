@@ -110,10 +110,20 @@ server <- function(input, output) {
     # Solution to this might be not including acres or regressing houses away from 
     # the city center separately from those closer
     coefs <- coef(mdl)
+    for (i in 1:5) {
+      if (coefs[i] < 0) {
+        coefs[i] <- 0
+      }
+    }
+    
+    # y-intercept for region 4 was about -157,000, so I just made it zero for
+    # now, along with any other variables that had very large negative numbers
+    # because of the affect of distance to city center on acre price, etc. so
+    # our estimate of the home price should never be less than 0.
     
     predicted_price <- function(num) {
       signif(coefs[1] + coefs[2] * input$beds[num] + coefs[3] * input$full_baths[num] + 
-      coefs[4] * input$half_baths[num] + coefs[5] * input$sqft[num] + coefs[6] * input$acres[num], 4)
+      coefs[4] * input$half_baths[num] + coefs[5] * input$sqft[num], 4)
     }
     
     HTML(paste("Lowest predicted price: $", predicted_price(1), 
@@ -149,6 +159,9 @@ server <- function(input, output) {
     
     if (nrow(a2_no_missing_filtered) > 0) {
       p <- p + geom_sf(data = a2housing_filtered_sf, color = "red", size = 2, alpha = 0.9)
+    }
+    else {
+      paste("No houses matching this criteria")
     }
     
     p + geom_hline(yintercept = y_half, linetype="dashed") + 
