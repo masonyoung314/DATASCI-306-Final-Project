@@ -39,6 +39,13 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel(
                  sliderInput(
+                   inputId = "budget",
+                   label = "Budget: ",
+                   min = 0,
+                   max = 9500000,
+                   value = 100000
+                 ),
+                 sliderInput(
                    inputId = "beds", 
                    label = "Bedrooms: ",
                    min = 0,
@@ -105,12 +112,6 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   
-  base_map <- reactive({
-    ggplot() + annotation_map_tile(
-      type = "stamen_terrain",
-      zoom = 14) + coord_sf()
-  })
-  
   output$house_price <- renderUI({
     if (input$region == "All") {
       a2housing_filtered <- a2housing_no_missing
@@ -157,7 +158,8 @@ server <- function(input, output) {
     }
     
     a2_no_missing_filtered <- a2housing_no_missing_plot |> 
-      filter(beds >= input$beds[1] & beds <= input$beds[2],
+      filter(sale_price <= input$budget,
+             beds >= input$beds[1] & beds <= input$beds[2],
              full_baths >= input$full_baths[1] & full_baths <= input$full_baths[2],
              half_baths >= input$half_baths[1] & half_baths <= input$half_baths[2],
              sqft >= input$sqft[1] & sqft <= input$sqft[2], 
