@@ -4,6 +4,9 @@ library(sf)
 library(prettymapr)
 library(ggspatial)
 library(tidyverse)
+library(ggmap)
+library(usethis)
+library(leaflet)
 theme_set(theme_classic())
 load("a2housing.RData")
 
@@ -18,7 +21,15 @@ a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(ac
     long > -83.74 & lat < 42.28 ~ "4",
     TRUE ~ "1"
   ))
-      
+
+stadia_key <- Sys.getenv("STADIA_KEY")
+
+bbox <- c(left = -83.8, bottom = 42.22, right = -83.68, top = 43.34)
+
+aa_map <- get_stadiamap(bbox, zoom = 12, maptype = "stamen_terrain")
+
+ggmap::register_stadiamaps(stadia_key)
+
 
 
 ui <- fluidPage(
@@ -70,7 +81,7 @@ ui <- fluidPage(
                ),
                mainPanel(
                  htmlOutput("house_price"),
-                 plotOutput("map")
+                 leafletOutput("map")
                )
              )
           ),
@@ -95,7 +106,9 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   base_map <- reactive({
-    ggplot() # + annotation_map_tile(zoom = 14)
+    ggplot() + annotation_map_tile(
+      type = "stamen_terrain",
+      zoom = 14) + coord_sf()
   })
   
   output$house_price <- renderUI({
@@ -126,12 +139,15 @@ server <- function(input, output) {
       coefs[4] * input$half_baths[num] + coefs[5] * input$sqft[num], 4)
     }
     
-    HTML(paste("Lowest predicted price: $", predicted_price(1), 
-               "<br>", "Highest predicted price: $", predicted_price(2)))
+    HTML(paste("Lowest predicted price: <b>$", predicted_price(1), 
+               "</b><br>", "Highest predicted price: <b>$", predicted_price(2),
+               "</b>"))
   })
   
-  output$map <- renderPlot({
+  output$map <- renderLeaflet({
+  
     
+      
     if (input$region == "All") {
       a2housing_no_missing_plot <- a2housing_no_missing
     }
@@ -147,34 +163,58 @@ server <- function(input, output) {
              sqft >= input$sqft[1] & sqft <= input$sqft[2], 
              acres >= input$acres[1] & acres <= input$acres[2]) 
     
-    a2housing_sf <- st_as_sf(a2housing_no_missing, coords = c("long", "lat"), crs = 4326) 
-    a2housing_filtered_sf <- st_as_sf(a2_no_missing_filtered, coords = c("long", "lat"), crs = 4326) 
-    
     x_half <- -83.74
     y_half <- 42.28
     
-    p <- base_map() + 
-      geom_sf(data = a2housing_sf, color = "black", size = 2, alpha = 0.5) 
-      
+    long <- c(-83.78, -83.7, -83.78, -83.7)
+    lat <- c(42.32, 42.32, 42.23, 42.23)
+    label <- c("Region 1", "Region 2", "Region 3", "Region 4")
     
-    if (nrow(a2_no_missing_filtered) > 0) {
-      p <- p + geom_sf(data = a2housing_filtered_sf, color = "red", size = 2, alpha = 0.9)
-    }
-    else {
-      paste("No houses matching this criteria")
-    }
+    region_markers <- data.frame(
+      label = label,
+      long = long,
+      lat = lat
+    )
     
-    p + geom_hline(yintercept = y_half, linetype="dashed") + 
-      geom_vline(xintercept = x_half, linetype="dashed") +
-      annotate("text", x = -83.78, y = 42.33, label = "Region 1", color = "blue") +
-      annotate("text", x = -83.7, y = 42.33, label = "Region 2", color = "blue") +
-      annotate("text", x = -83.78, y = 42.23, label = "Region 3", color = "blue") +
-      annotate("text", x = -83.7, y = 42.23, label = "Region 4", color = "blue") +
-      labs(
-        x = "Longitude", 
-        y = "Latitude", 
-        title = "Map of Ann Arbor with Homes Sold From 2021-2025"
-      ) + coord_sf()
+    awesome_icons <- awesomeIcons(
+      icon = "home",
+      iconColor = "white",
+      markerColor = "red"
+    )
+    
+      leaflet() |> addProviderTiles(providers$Stadia.Outdoors) |>
+        setView(lng = x_half, lat = y_half, zoom = 12) |>
+        addCircleMarkers(data = a2housing_no_missing, lng = ~long, lat = ~lat, radius = 2, color = "black", opacity = 0.5, fillOpacity = 0) |>
+        addAwesomeMarkers(
+          data = a2_no_missing_filtered, 
+          lng = ~long, 
+          lat = ~lat, 
+          icon = awesome_icons, 
+          popup = ~paste0("<b>$", sale_price, "</b><br> Beds: <b>",
+                          beds, "</b><br> Bathrooms: <b>", 
+                          full_baths + half_baths, "</b><br>Square feet: <b>",
+                          sqft, "</b><br>Acres: <b>", 
+                          acres, "</b>")) |>
+        addPolylines(
+          lng = c(x_half, x_half),
+          lat = c(y_half + 0.06, y_half - 0.06),
+          color = "red",
+          weight = 3,
+          opacity = 0.8
+        ) |>
+        addPolylines(
+          lng = c(x_half - 0.08, x_half + 0.08),
+          lat = c(y_half, y_half),
+          color = "red",
+          weight = 3,
+          opacity = 0.8
+        ) |>
+        addMarkers(
+          data = region_markers,
+          lng = ~long,
+          lat = ~lat,
+          popup = ~label
+        )
   })
   
   output$inflation_test_text <- renderText({
