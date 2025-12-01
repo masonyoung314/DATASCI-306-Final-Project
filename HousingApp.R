@@ -133,6 +133,9 @@ server <- function(input, output) {
     # because of the affect of distance to city center on acre price, etc. so
     # our estimate of the home price should never be less than 0.
     
+    # Also discovered that a lot of houses are listed at the incorrect price
+    # Many say $1 or $100, etc. 
+    
     predicted_price <- function(num) {
       signif(coefs[1] + coefs[2] * input$beds[num] + coefs[3] * input$full_baths[num] + 
       coefs[4] * input$half_baths[num] + coefs[5] * input$sqft[num], 4)
