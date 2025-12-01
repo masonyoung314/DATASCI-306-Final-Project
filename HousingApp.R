@@ -10,26 +10,6 @@ library(leaflet)
 theme_set(theme_classic())
 load("a2housing.RData")
 
-
-
-a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), 
-                                            !is.na(sqft), !is.na(sale_price)) |>
-  mutate(region = case_when(
-    long <= -83.74 & lat >= 42.28 ~ "1",
-    long > -83.74 & lat >= 42.28 ~ "2",
-    long <= -83.74 & lat < 42.28 ~ "3",
-    long > -83.74 & lat < 42.28 ~ "4",
-    TRUE ~ "1"
-  ))
-
-stadia_key <- Sys.getenv("STADIA_KEY")
-
-bbox <- c(left = -83.8, bottom = 42.22, right = -83.68, top = 43.34)
-
-ggmap::register_stadiamaps(stadia_key)
-
-
-
 ui <- fluidPage(
   titlePanel("Ann Arbor Housing Search"),
   tabsetPanel(
@@ -109,6 +89,20 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), 
+                                              !is.na(sqft), !is.na(sale_price)) |>
+    mutate(region = case_when(
+      long <= -83.74 & lat >= 42.28 ~ "1",
+      long > -83.74 & lat >= 42.28 ~ "2",
+      long <= -83.74 & lat < 42.28 ~ "3",
+      long > -83.74 & lat < 42.28 ~ "4",
+      TRUE ~ "1"
+    ))
+  
+  stadia_key <- Sys.getenv("STADIA_KEY")
+  
+  ggmap::register_stadiamaps(stadia_key)
+  
   
   output$house_price <- renderUI({
     if (input$region == "All") {
