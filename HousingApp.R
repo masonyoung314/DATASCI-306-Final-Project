@@ -21,21 +21,21 @@ ui <- fluidPage(
                    label = "Budget: ",
                    min = 0,
                    max = 9500000,
-                   value = 100000
+                   value = 300000
                  ),
                  sliderInput(
                    inputId = "beds", 
                    label = "Bedrooms: ",
                    min = 0,
                    max = 24,
-                   value = c(0, 1)
+                   value = c(0, 3)
                  ),
                  sliderInput(
                    inputId = "full_baths", 
                    label = "Full Baths: ",
                    min = 0,
                    max = 24,
-                   value = c(0, 1)
+                   value = c(0, 3)
                  ),
                  sliderInput(
                    inputId = "half_baths", 
