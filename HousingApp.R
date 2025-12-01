@@ -26,8 +26,6 @@ stadia_key <- Sys.getenv("STADIA_KEY")
 
 bbox <- c(left = -83.8, bottom = 42.22, right = -83.68, top = 43.34)
 
-aa_map <- get_stadiamap(bbox, zoom = 12, maptype = "stamen_terrain")
-
 ggmap::register_stadiamaps(stadia_key)
 
 
