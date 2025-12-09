@@ -181,7 +181,14 @@ server <- function(input, output) {
     
       leaflet() |> addProviderTiles(providers$Stadia.Outdoors) |>
         setView(lng = x_half, lat = y_half, zoom = 12) |>
-        addCircleMarkers(data = a2housing_no_missing, lng = ~long, lat = ~lat, radius = 2, color = "black", opacity = 0.5, fillOpacity = 0) |>
+        addCircleMarkers(
+          data = a2housing_no_missing, 
+          lng = ~long, 
+          lat = ~lat, 
+          radius = 2, 
+          color = "black", 
+          opacity = 0.5, 
+          fillOpacity = 0) |>
         addAwesomeMarkers(
           data = a2_no_missing_filtered, 
           lng = ~long, 
