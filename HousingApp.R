@@ -90,7 +90,8 @@ ui <- fluidPage(
 
 server <- function(input, output) {
   a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), 
-                                              !is.na(sqft), !is.na(sale_price)) |>
+                                              !is.na(sqft), !is.na(sale_price), 
+                                              sale_price > 1000) |>
     mutate(region = case_when(
       long <= -83.74 & lat >= 42.28 ~ "1",
       long > -83.74 & lat >= 42.28 ~ "2",
