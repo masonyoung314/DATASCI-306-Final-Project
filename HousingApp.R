@@ -22,7 +22,7 @@ ui <- fluidPage(
                    inputId = "distance",
                    label = "Distance from City Center (mi): ",
                    min = 0,
-                   max = 10,
+                   max = 5,
                    value = 0
                  )
                ),
@@ -134,9 +134,10 @@ server <- function(input, output) {
     a2_distance_visualization <- a2housing_no_missing |> 
       mutate(
         distance = distHaversine(matrix(c(long, lat), ncol = 2), 
-                                 c(a2_center$long, a2_center$lat))
+                                 c(a2_center$long, a2_center$lat)) * 
+          0.000621371
       )
-    print(a2_distance_visualization)
+    a2_distance_visualization |> select(sale_price, distance) |> arrange(-distance) |> print()
     
   
     leaflet() |> addProviderTiles(providers$Stadia.Outdoors) |> 
