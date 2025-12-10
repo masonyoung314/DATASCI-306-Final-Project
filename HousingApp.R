@@ -109,6 +109,14 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  x_half <- -83.74
+  y_half <- 42.28
+  
+  a2_center <- tibble::tibble(
+    long = x_half,
+    lat = y_half
+  )
+  
   a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), 
                                               !is.na(sqft), !is.na(sale_price), 
                                               sale_price > 1000) |>
@@ -120,6 +128,13 @@ server <- function(input, output) {
       TRUE ~ "1"
     ))
   
+  a2_distance_visualization <- a2housing_no_missing |> 
+    mutate(
+      distance = distHaversine(matrix(c(long, lat), ncol = 2), 
+                               c(a2_center$long, a2_center$lat)) * 
+        0.000621371
+    ) 
+  
   
   
   stadia_key <- Sys.getenv("STADIA_KEY")
@@ -127,20 +142,8 @@ server <- function(input, output) {
   ggmap::register_stadiamaps(stadia_key)
   
   output$housingVis <- renderLeaflet({
-    x_half <- -83.74
-    y_half <- 42.28
     
-    a2_center <- tibble::tibble(
-      long = x_half,
-      lat = y_half
-    )
-    
-    a2_distance_visualization <- a2housing_no_missing |> 
-      mutate(
-        distance = distHaversine(matrix(c(long, lat), ncol = 2), 
-                                 c(a2_center$long, a2_center$lat)) * 
-          0.000621371
-      ) |> 
+    a2_distance_vis_filtered <- a2_distance_visualization |> 
       filter(distance <= input$distance & distance >= input$distance - 0.5)
     
   
@@ -155,7 +158,7 @@ server <- function(input, output) {
         color = "green"
       ) |> 
       addCircleMarkers(
-        data = a2_distance_visualization,
+        data = a2_distance_vis_filtered,
         lng = ~long,
         lat = ~lat,
         radius = 1,
@@ -165,33 +168,60 @@ server <- function(input, output) {
   })
   
   output$coefficients <- renderUI({
-    x_half <- -83.74
-    y_half <- 42.28
     
-    a2_center <- tibble::tibble(
-      long = x_half,
-      lat = y_half
-    )
-    
-    a2_distance_visualization <- a2housing_no_missing |> 
-      mutate(
-        distance = distHaversine(matrix(c(long, lat), ncol = 2), 
-                                 c(a2_center$long, a2_center$lat)) * 
-          0.000621371
-      ) |> 
-      filter(distance <= input$distance & distance >= input$distance - 0.5)
+      a2_distance_vis_filtered <- a2_distance_visualization |> 
+        filter(distance <= input$distance & distance >= input$distance - 0.5)
     
     print(a2_distance_visualization)
     
-    sqft <- lm(sale_price ~ sqft, data = a2_distance_visualization) |> coef()
-    acres <- lm(sale_price ~ acres, data = a2_distance_visualization) |> coef()
+    sqft <- lm(sale_price ~ sqft, data = a2_distance_vis_filtered) |> coef()
+    acres <- lm(sale_price ~ acres, data = a2_distance_vis_filtered) |> coef()
 
     HTML(paste("Square feet coefficient:<b>", round(sqft[2], digits = 2), "</b><br> Acres coefficient:<b>",
                round(acres[2], digits = 2), "</b>"))
     
   })
   
-  
+  output$TrendofCoefficients <- renderPlot({
+    
+    a2_one <- a2_distance_visualization |> 
+      filter(distance <= 1 & distance >= 0.5)
+    
+    a2_two <- a2_distance_visualization |> 
+      filter(distance <= 2 & distance >= 1.5)
+    
+    a2_three <- a2_distance_visualization |> 
+      filter(distance <= 3 & distance >= 2.5)
+    
+    a2_four <- a2_distance_visualization |> 
+      filter(distance <= 4 & distance >= 3.5)
+    
+    a2_sqft_one <- lm(sale_price ~ sqft, data = a2_one) |> coef()
+    a2_sqft_two <- lm(sale_price ~ sqft, data = a2_two) |> coef()
+    a2_sqft_three <- lm(sale_price ~ sqft, data = a2_three) |> coef()
+    a2_sqft_four <- lm(sale_price ~ sqft, data = a2_four) |> coef()
+    
+    a2_acres_one <- lm(sale_price ~ acres, data = a2_one) |> coef()
+    a2_acres_two <- lm(sale_price ~ acres, data = a2_two) |> coef()
+    a2_acres_three <- lm(sale_price ~ acres, data = a2_three) |> coef()
+    a2_acres_four <- lm(sale_price ~ acres, data = a2_four) |> coef()
+    
+    a2_coefs <- tibble::tibble(
+      distance = c(1, 2, 3, 4, 1, 2, 3, 4),
+      coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_sqft_three[2], a2_sqft_four[2], 
+                a2_acres_one[2], a2_acres_two[2], a2_acres_three[2], a2_acres_four[2]),
+      name = c("sqft", "sqft", "sqft", "sqft", "acres", "acres", "acres", "acres")
+    )
+    
+    a2_coefs |> ggplot() + geom_line(aes(x = distance, y = coefs, color = name)) + 
+      theme_minimal() + 
+      labs(
+        title = "Effects of Home Square Footage and Acreage on Sale Price vs. Distance from Center of Ann Arbor",
+        x = "Distance",
+        y = "Price Change Per One Unit Increase"
+      )
+    
+  })
   
   output$house_price <- renderUI({
     if (input$region == "All") {
