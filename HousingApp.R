@@ -136,8 +136,8 @@ server <- function(input, output) {
         distance = distHaversine(matrix(c(long, lat), ncol = 2), 
                                  c(a2_center$long, a2_center$lat)) * 
           0.000621371
-      )
-    a2_distance_visualization |> select(sale_price, distance) |> arrange(-distance) |> print()
+      ) |> 
+      filter(distance <= input$distance)
     
   
     leaflet() |> addProviderTiles(providers$Stadia.Outdoors) |> 
@@ -148,9 +148,16 @@ server <- function(input, output) {
         lat = ~lat,
         radius = 2,
         opacity = 1,
-        color = "magenta"
+        color = "green"
+      ) |> 
+      addCircleMarkers(
+        data = a2_distance_visualization,
+        lng = ~long,
+        lat = ~lat,
+        radius = 1,
+        opacity = 0.5,
+        color = "red"
       )
-      
   })
   
   
