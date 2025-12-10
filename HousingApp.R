@@ -13,6 +13,22 @@ load("a2housing.RData")
 ui <- fluidPage(
   titlePanel("Ann Arbor Housing Search"),
   tabsetPanel(
+    tabPanel("Square Feet vs. Acres",
+             sidebarLayout(
+               sidebarPanel(
+                 sliderInput(
+                   inputId = "distance",
+                   label = "Distance from City Center (mi): ",
+                   min = 0,
+                   max = 10,
+                   value = 0
+                 )
+               ),
+               mainPanel(
+                 htmlOutput("coefficients"),
+                 leafletOutput("housingVis")
+               )
+             )),
     tabPanel("Housing Search",
              sidebarLayout(
                sidebarPanel(
