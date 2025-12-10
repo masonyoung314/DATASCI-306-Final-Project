@@ -206,21 +206,59 @@ server <- function(input, output) {
     a2_acres_three <- lm(sale_price ~ acres, data = a2_three) |> coef()
     a2_acres_four <- lm(sale_price ~ acres, data = a2_four) |> coef()
     
-    a2_coefs <- tibble::tibble(
+    
+    a2_coefs_one <- tibble::tibble(
+      distance = c(1, 1),
+      coefs = c(a2_sqft_one[2], a2_acres_one[2]),
+      name = c("sqft", "acres")
+    )
+    
+    a2_coefs_two <- tibble::tibble(
+      distance = c(1, 2, 1, 2),
+      coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_acres_one[2], a2_acres_two[2]),
+      name = c("sqft", "sqft", "acres", "acres")
+    )
+    
+    a2_coefs_three <- tibble::tibble(
+      distance = c(1, 2, 3, 1, 2, 3),
+      coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_sqft_three[2], 
+                a2_acres_one[2], a2_acres_two[2], a2_acres_three[2]),
+      name = c("sqft", "sqft", "sqft", "acres", "acres", "acres")
+    )
+    
+    a2_coefs_four <- tibble::tibble(
       distance = c(1, 2, 3, 4, 1, 2, 3, 4),
       coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_sqft_three[2], a2_sqft_four[2], 
                 a2_acres_one[2], a2_acres_two[2], a2_acres_three[2], a2_acres_four[2]),
       name = c("sqft", "sqft", "sqft", "sqft", "acres", "acres", "acres", "acres")
     )
     
-    a2_coefs |> ggplot() + geom_line(aes(x = distance, y = coefs, color = name)) + 
-      theme_minimal() + 
-      labs(
-        title = "Effects of Home Square Footage and Acreage on Sale Price vs. Distance from Center of Ann Arbor",
-        x = "Distance",
-        y = "Price Change Per One Unit Increase"
-      )
+    if (input$distance == 1) {
+      tib_needed <- a2_coefs_one
+    }
+    else if (input$distance == 2) {
+      tib_needed <- a2_coefs_two
+    }
+    else if (input$distance == 3) {
+      tib_needed <- a2_coefs_three
+    }
+    else {
+      tib_needed <- a2_coefs_four
+    }
     
+    map_base <- tib_needed |> ggplot() + theme_minimal() + labs(
+      title = "Effects of Home Square Footage and Acreage on Sale Price vs. Distance from Center of Ann Arbor",
+      x = "Distance",
+      y = "Price Change Per One Unit Increase"
+    )
+    
+    if (input$distance == 1) {
+      map_base + geom_point(aes(x = distance, y = coefs, color = name, shape = name))
+    }
+    else {
+      map_base + geom_line(aes(x = distance, y = coefs, color = name)) +
+        geom_point(aes(x = distance, y = coefs, color = name, shape = name))
+    }
   })
   
   output$house_price <- renderUI({
