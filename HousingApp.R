@@ -22,7 +22,7 @@ ui <- fluidPage(
                    inputId = "distance",
                    label = "Distance from City Center (mi): ",
                    min = 0,
-                   max = 5,
+                   max = 4,
                    value = 0
                  )
                ),
@@ -137,7 +137,7 @@ server <- function(input, output) {
                                  c(a2_center$long, a2_center$lat)) * 
           0.000621371
       ) |> 
-      filter(distance <= input$distance)
+      filter(distance <= input$distance & distance >= input$distance - 0.5)
     
   
     leaflet() |> addProviderTiles(providers$Stadia.Outdoors) |> 
