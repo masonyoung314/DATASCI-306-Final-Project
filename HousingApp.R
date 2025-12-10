@@ -21,14 +21,16 @@ ui <- fluidPage(
                  sliderInput(
                    inputId = "distance",
                    label = "Distance from City Center (mi): ",
-                   min = 0,
+                   min = 1,
                    max = 4,
                    value = 0
                  )
                ),
                mainPanel(
+                 leafletOutput("housingVis"),
                  htmlOutput("coefficients"),
-                 leafletOutput("housingVis")
+                 plotOutput("TrendofCoefficients"), # Graph of the two coefficients, one of each at each distance
+                 plotOutput("trendOfTrend") # A graph of the change of each coefficient at each distance
                )
              )),
     tabPanel("Housing Search",
@@ -99,7 +101,7 @@ ui <- fluidPage(
                ),
                mainPanel(
                  textOutput("inflation_test_text"),
-                 htmlOutput("inflation_test")
+                 htmlOutput("inflation_test") 
                )
              )
     )
@@ -117,6 +119,8 @@ server <- function(input, output) {
       long > -83.74 & lat < 42.28 ~ "4",
       TRUE ~ "1"
     ))
+  
+  
   
   stadia_key <- Sys.getenv("STADIA_KEY")
   
@@ -159,6 +163,34 @@ server <- function(input, output) {
         color = "red"
       )
   })
+  
+  output$coefficients <- renderUI({
+    x_half <- -83.74
+    y_half <- 42.28
+    
+    a2_center <- tibble::tibble(
+      long = x_half,
+      lat = y_half
+    )
+    
+    a2_distance_visualization <- a2housing_no_missing |> 
+      mutate(
+        distance = distHaversine(matrix(c(long, lat), ncol = 2), 
+                                 c(a2_center$long, a2_center$lat)) * 
+          0.000621371
+      ) |> 
+      filter(distance <= input$distance & distance >= input$distance - 0.5)
+    
+    print(a2_distance_visualization)
+    
+    sqft <- lm(sale_price ~ sqft, data = a2_distance_visualization) |> coef()
+    acres <- lm(sale_price ~ acres, data = a2_distance_visualization) |> coef()
+
+    HTML(paste("Square feet coefficient:<b>", round(sqft[2], digits = 2), "</b><br> Acres coefficient:<b>",
+               round(acres[2], digits = 2), "</b>"))
+    
+  })
+  
   
   
   output$house_price <- renderUI({
