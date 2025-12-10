@@ -7,6 +7,8 @@ library(tidyverse)
 library(ggmap)
 library(usethis)
 library(leaflet)
+library(geosphere)
+library(purrr)
 theme_set(theme_classic())
 load("a2housing.RData")
 
@@ -119,6 +121,36 @@ server <- function(input, output) {
   stadia_key <- Sys.getenv("STADIA_KEY")
   
   ggmap::register_stadiamaps(stadia_key)
+  
+  output$housingVis <- renderLeaflet({
+    x_half <- -83.74
+    y_half <- 42.28
+    
+    a2_center <- tibble::tibble(
+      long = x_half,
+      lat = y_half
+    )
+    
+    a2_distance_visualization <- a2housing_no_missing |> 
+      mutate(
+        distance = distHaversine(matrix(c(long, lat), ncol = 2), 
+                                 c(a2_center$long, a2_center$lat))
+      )
+    print(a2_distance_visualization)
+    
+  
+    leaflet() |> addProviderTiles(providers$Stadia.Outdoors) |> 
+      setView(lng = x_half, lat = y_half, zoom = 12)  |> 
+      addCircleMarkers(
+        data = a2_center,
+        lng = ~long,
+        lat = ~lat,
+        radius = 2,
+        opacity = 1,
+        color = "magenta"
+      )
+      
+  })
   
   
   output$house_price <- renderUI({
