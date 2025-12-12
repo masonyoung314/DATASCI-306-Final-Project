@@ -1,0 +1,12 @@
+name: DATASCI-306-Final-Project
+title: DATASCI-306-Final-Project
+username: masonyoung314
+account: masonyoung314
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16304656
+bundleId: 11316145
+url: https://masonyoung314.shinyapps.io/DATASCI-306-Final-Project/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
