@@ -21,16 +21,16 @@ ui <- fluidPage(
                  sliderInput(
                    inputId = "distance",
                    label = "Distance from City Center (mi): ",
-                   min = 1,
+                   min = 0.1,
                    max = 4,
-                   value = 0
+                   value = 0.1,
+                   step = 0.05
                  )
                ),
                mainPanel(
                  leafletOutput("housingVis"),
                  htmlOutput("coefficients"),
-                 plotOutput("TrendofCoefficients"), # Graph of the two coefficients, one of each at each distance
-                 plotOutput("trendOfTrend") # A graph of the change of each coefficient at each distance
+                 plotOutput("TrendofCoefficients") # Graph of the two coefficients, one of each at each distance
                )
              )),
     tabPanel("Housing Search",
@@ -89,34 +89,11 @@ ui <- fluidPage(
                  leafletOutput("map")
                )
              )
-          ),
-    tabPanel("Inflation",
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput(
-                   inputId = "regionInflation",
-                   label = "Region: ",
-                   c("All", "1", "2", "3", "4")
-                 )
-               ),
-               mainPanel(
-                 textOutput("inflation_test_text"),
-                 htmlOutput("inflation_test") 
-               )
-             )
-    )
+          )
   )
 )
 
 server <- function(input, output) {
-  x_half <- -83.74
-  y_half <- 42.28
-  
-  a2_center <- tibble::tibble(
-    long = x_half,
-    lat = y_half
-  )
-  
   a2housing_no_missing <- a2housing |> filter(!is.na(lat), !is.na(long), !is.na(acres), 
                                               !is.na(sqft), !is.na(sale_price), 
                                               sale_price > 1000) |>
@@ -128,22 +105,73 @@ server <- function(input, output) {
       TRUE ~ "1"
     ))
   
-  a2_distance_visualization <- a2housing_no_missing |> 
-    mutate(
-      distance = distHaversine(matrix(c(long, lat), ncol = 2), 
-                               c(a2_center$long, a2_center$lat)) * 
-        0.000621371
-    ) 
+  # City center used for distance calculations
+  a2_center <- tibble(long = -83.74, lat = 42.28)
   
+  # Compute distance once
+  a2housing_with_distance <- a2housing_no_missing |>
+    mutate(
+      distance = distHaversine(matrix(c(long, lat), ncol = 2),
+                               c(a2_center$long, a2_center$lat)) * 0.000621371
+    )
+  
+  # Reactive dataset for distance slider
+  houses_by_distance <- reactive({
+    a2housing_with_distance |>
+      filter(distance <= input$distance & distance >= input$distance - 0.5)
+  })
   
   
   stadia_key <- Sys.getenv("STADIA_KEY")
   
   ggmap::register_stadiamaps(stadia_key)
   
-  output$housingVis <- renderLeaflet({
+  # Display coefficients of sqft vs acres at chosen distance
+  output$coefficients <- renderUI({
+    data <- houses_by_distance()
     
-    a2_distance_vis_filtered <- a2_distance_visualization |> 
+    # If too few houses, skip regression
+    if (nrow(data) < 10) {
+      return(HTML("<b>Not enough houses in this band to run a regression.</b>"))
+    }
+    
+    # Regression using only sqft + acres
+    mdl <- lm(sale_price ~ sqft + acres, data = data)
+    co <- coef(mdl)
+    
+    effect_sqft <- round(co["sqft"], 2)
+    effect_acres <- round(co["acres"], 2)
+    
+    # Which effect is larger?
+    stronger <- if (effect_acres > effect_sqft) {
+      "Acres has a stronger influence on price at this distance."
+    } else {
+      "Square feet has a stronger influence on price at this distance."
+    }
+    
+    HTML(paste0(
+      "<b>Effect of 1 square foot:</b> $", effect_sqft, "<br>",
+      "<b>Effect of 1 acre:</b> $", effect_acres, "<br><br>",
+      "<b>", stronger, "</b>"
+    ))
+  })
+  
+  
+  output$housingVis <- renderLeaflet({
+    x_half <- -83.74
+    y_half <- 42.28
+    
+    a2_center <- tibble::tibble(
+      long = x_half,
+      lat = y_half
+    )
+    
+    a2_distance_visualization <- a2housing_no_missing |> 
+      mutate(
+        distance = distHaversine(matrix(c(long, lat), ncol = 2), 
+                                 c(a2_center$long, a2_center$lat)) * 
+          0.000621371
+      ) |> 
       filter(distance <= input$distance & distance >= input$distance - 0.5)
     
   
@@ -158,7 +186,7 @@ server <- function(input, output) {
         color = "green"
       ) |> 
       addCircleMarkers(
-        data = a2_distance_vis_filtered,
+        data = a2_distance_visualization,
         lng = ~long,
         lat = ~lat,
         radius = 1,
@@ -167,79 +195,73 @@ server <- function(input, output) {
       )
   })
   
-  output$coefficients <- renderUI({
-    
-      a2_distance_vis_filtered <- a2_distance_visualization |> 
-        filter(distance <= input$distance & distance >= input$distance - 0.5)
-    
-    print(a2_distance_visualization)
-    
-    sqft <- lm(sale_price ~ sqft, data = a2_distance_vis_filtered) |> coef()
-    acres <- lm(sale_price ~ acres, data = a2_distance_vis_filtered) |> coef()
 
-    HTML(paste("Square feet coefficient:<b>", round(sqft[2], digits = 2), "</b><br> Acres coefficient:<b>",
-               round(acres[2], digits = 2), "</b>"))
-    
-  })
-  
   output$TrendofCoefficients <- renderPlot({
     
-    a2_one <- a2_distance_visualization |> 
+    a2_one <- a2housing_with_distance |> 
       filter(distance <= 1 & distance >= 0.5)
     
-    a2_two <- a2_distance_visualization |> 
+    a2_two <- a2housing_with_distance |> 
       filter(distance <= 2 & distance >= 1.5)
     
-    a2_three <- a2_distance_visualization |> 
+    a2_three <- a2housing_with_distance |> 
       filter(distance <= 3 & distance >= 2.5)
     
-    a2_four <- a2_distance_visualization |> 
+    a2_four <- a2housing_with_distance |> 
       filter(distance <= 4 & distance >= 3.5)
     
-    a2_sqft_one <- lm(sale_price ~ sqft, data = a2_one) |> coef()
-    a2_sqft_two <- lm(sale_price ~ sqft, data = a2_two) |> coef()
-    a2_sqft_three <- lm(sale_price ~ sqft, data = a2_three) |> coef()
-    a2_sqft_four <- lm(sale_price ~ sqft, data = a2_four) |> coef()
+    a2_less <- a2housing_with_distance |> 
+      filter(distance >= 0 & distance <= 0.5)
     
-    a2_acres_one <- lm(sale_price ~ acres, data = a2_one) |> coef()
-    a2_acres_two <- lm(sale_price ~ acres, data = a2_two) |> coef()
-    a2_acres_three <- lm(sale_price ~ acres, data = a2_three) |> coef()
-    a2_acres_four <- lm(sale_price ~ acres, data = a2_four) |> coef()
-    
-    
-    a2_coefs_one <- tibble::tibble(
-      distance = c(1, 1),
-      coefs = c(a2_sqft_one[2], a2_acres_one[2]),
+    a2_both_coefs <- lm(sale_price ~ sqft + acres, data = a2_less) |> coef()
+    a2_both_one <- lm(sale_price ~ sqft + acres, data = a2_one) |> coef()
+    a2_both_two <- lm(sale_price ~ sqft + acres, data = a2_two) |> coef()
+    a2_both_three <- lm(sale_price ~ sqft + acres, data = a2_three) |> coef()
+    a2_both_four <- lm(sale_price ~ sqft + acres, data = a2_four) |> coef()
+  
+    a2_coefs_less <- tibble::tibble(
+      distance = c(0.5, 0.5),
+      coefs = c(a2_both_coefs["sqft"], a2_both_coefs["acres"]),
       name = c("sqft", "acres")
     )
-    
-    a2_coefs_two <- tibble::tibble(
-      distance = c(1, 2, 1, 2),
-      coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_acres_one[2], a2_acres_two[2]),
+      
+    a2_coefs_one <- tibble::tibble(
+      distance = c(0.5, 1, 0.5, 1),
+      coefs = c(a2_both_coefs["sqft"], a2_both_one["sqft"], a2_both_coefs["acres"], a2_both_one["acres"]),
       name = c("sqft", "sqft", "acres", "acres")
     )
     
-    a2_coefs_three <- tibble::tibble(
-      distance = c(1, 2, 3, 1, 2, 3),
-      coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_sqft_three[2], 
-                a2_acres_one[2], a2_acres_two[2], a2_acres_three[2]),
+    a2_coefs_two <- tibble::tibble(
+      distance = c(0.5, 1, 2, 0.5, 1, 2),
+      coefs = c(a2_both_coefs["sqft"], a2_both_one["sqft"], a2_both_two["sqft"], a2_both_coefs["acres"], 
+                a2_both_one["acres"], a2_both_two["acres"]),
       name = c("sqft", "sqft", "sqft", "acres", "acres", "acres")
     )
     
-    a2_coefs_four <- tibble::tibble(
-      distance = c(1, 2, 3, 4, 1, 2, 3, 4),
-      coefs = c(a2_sqft_one[2], a2_sqft_two[2], a2_sqft_three[2], a2_sqft_four[2], 
-                a2_acres_one[2], a2_acres_two[2], a2_acres_three[2], a2_acres_four[2]),
+    a2_coefs_three <- tibble::tibble(
+      distance = c(0.5, 1, 2, 3, 0.5, 1, 2, 3),
+      coefs = c(a2_both_coefs["sqft"], a2_both_one["sqft"], a2_both_two["sqft"], a2_both_three["sqft"], 
+                a2_both_coefs["acres"], a2_both_one["acres"], a2_both_two["acres"], a2_both_three["acres"]),
       name = c("sqft", "sqft", "sqft", "sqft", "acres", "acres", "acres", "acres")
     )
     
-    if (input$distance == 1) {
+    a2_coefs_four <- tibble::tibble(
+      distance = c(0.5, 1, 2, 3, 4, 0.5, 1, 2, 3, 4),
+      coefs = c(a2_both_coefs["sqft"], a2_both_one["sqft"], a2_both_two["sqft"], a2_both_three["sqft"], a2_both_four["sqft"], 
+                a2_both_coefs["acres"], a2_both_one["acres"], a2_both_two["acres"], a2_both_three["acres"], a2_both_four["acres"]),
+      name = c("sqft", "sqft", "sqft", "sqft", "sqft", "acres", "acres", "acres", "acres", "acres")
+    )
+    
+    if (input$distance < 1) {
+      tib_needed <- a2_coefs_less
+    }
+    else if (input$distance >=1 & input$distance < 2) {
       tib_needed <- a2_coefs_one
     }
-    else if (input$distance == 2) {
+    else if (input$distance >= 2 & input$distance < 3) {
       tib_needed <- a2_coefs_two
     }
-    else if (input$distance == 3) {
+    else if (input$distance >= 3 & input$distance < 4) {
       tib_needed <- a2_coefs_three
     }
     else {
@@ -249,10 +271,12 @@ server <- function(input, output) {
     map_base <- tib_needed |> ggplot() + theme_minimal() + labs(
       title = "Effects of Home Square Footage and Acreage on Sale Price vs. Distance from Center of Ann Arbor",
       x = "Distance",
-      y = "Price Change Per One Unit Increase"
+      y = "Price Change Per One Unit Increase",
+      shape = "Name",
+      color = "Name"
     )
     
-    if (input$distance == 1) {
+    if (input$distance < 1) {
       map_base + geom_point(aes(x = distance, y = coefs, color = name, shape = name))
     }
     else {
@@ -283,9 +307,6 @@ server <- function(input, output) {
     # now, along with any other variables that had very large negative numbers
     # because of the affect of distance to city center on acre price, etc. so
     # our estimate of the home price should never be less than 0.
-    
-    # Also discovered that a lot of houses are listed at the incorrect price
-    # Many say $1 or $100, etc. 
     
     predicted_price <- function(num) {
       signif(coefs[1] + coefs[2] * input$beds[num] + coefs[3] * input$full_baths[num] + 
@@ -377,32 +398,6 @@ server <- function(input, output) {
           popup = ~label
         )
   })
-  
-  output$inflation_test_text <- renderText({
-    paste("Test here if one or more of the regions of Ann Arbor have experienced greater
-    inflation than the national average.")
-  })
-  
-  output$inflation_test <- renderUI({
-    inflation21 <- 0.0329
-    inflation22 <- 0.0715
-    inflation23 <- 0.0644
-    inflation24 <- 0.0437
-    inflation25 <- 0.0334
-    
-    HTML(paste("<br>", "According to https://www.in2013dollars.com/Housing/price-inflation 
-          and the U.S. Bureau of Labor Statistics, the inflation rates for housing
-          in 2021-2025 are as follows: ", "<br>", "<br>", 
-          "2021:", inflation21, "<br>", "2022:", inflation22, "<br>",
-          "2023:", inflation23, "<br>", "2024:", inflation24, "<br>", 
-          "2025:", inflation25, "<br>"))
-          
-    # figure out how to select houses that are similar to each other, and
-    # test how the prices for similar houses have changed from 2021-2025
-    
-    
-  })
-  
 }
 
 shinyApp(ui, server)
