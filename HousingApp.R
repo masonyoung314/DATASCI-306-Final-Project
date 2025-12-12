@@ -13,7 +13,7 @@ theme_set(theme_classic())
 load("a2housing.RData")
 
 ui <- fluidPage(
-  titlePanel("Ann Arbor Housing Search"),
+  titlePanel("Ann Arbor Housing Exploration"),
   tabsetPanel(
     tabPanel("Square Feet vs. Acres",
              sidebarLayout(
